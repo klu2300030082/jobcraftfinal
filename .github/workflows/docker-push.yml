@@ -6,49 +6,37 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build-frontend:
+    name: Build & Push Frontend
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [frontend, backend]
-
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Set up QEMU (optional for multi-arch)
+        uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to Docker Hub
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install and build frontend
+        working-directory: ./job-craft-frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Frontend: Install & Build (only for frontend)
-        if: matrix.service == 'frontend'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - if: matrix.service == 'frontend'
-        run: |
-          cd job-craft-frontend
-          npm ci
-          npm run build
-
-      - name: Backend: Build Jar (only for backend)
-        if: matrix.service == 'backend'
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: 17
-      - if: matrix.service == 'backend'
-        run: |
-          cd job_craft_backend
-          mvn -B -DskipTests package
-
-      - name: Build and push image (frontend)
-        if: matrix.service == 'frontend'
+      - name: Build and push frontend image
         uses: docker/build-push-action@v4
         with:
           context: ./job-craft-frontend
@@ -58,8 +46,36 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:${{ github.sha }}
 
-      - name: Build and push image (backend)
-        if: matrix.service == 'backend'
+  build-backend:
+    name: Build & Push Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (optional for multi-arch)
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build backend jar (maven)
+        working-directory: ./job_craft_backend
+        run: mvn -B -DskipTests package
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
         uses: docker/build-push-action@v4
         with:
           context: ./job_craft_backend
