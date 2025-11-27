@@ -5,27 +5,44 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-jobs:
-  build-frontend:
-    name: Build & Push Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - name: Set up QEMU (optional for multi-arch)
+env:
+  FRONTEND_CONTEXT: ./job-craft-frontend
+  BACKEND_CONTEXT: ./job_craft_backend
+
+jobs:
+  setup-buildx:
+    name: Setup buildx & qemu
+    runs-on: ubuntu-latest
+    outputs:
+      builder: ${{ steps.bld.outputs.name }}
+    steps:
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
+        id: bld
         uses: docker/setup-buildx-action@v2
+        with:
+          install: true
 
-      - name: Setup Node
+  build-frontend:
+    name: Build & push frontend
+    runs-on: ubuntu-latest
+    needs: setup-buildx
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Install and build frontend
-        working-directory: ./job-craft-frontend
+        working-directory: ${{ env.FRONTEND_CONTEXT }}
         run: |
           npm ci
           npm run build
@@ -39,42 +56,52 @@ jobs:
       - name: Build and push frontend image
         uses: docker/build-push-action@v4
         with:
-          context: ./job-craft-frontend
-          file: ./job-craft-frontend/Dockerfile
+          context: ${{ env.FRONTEND_CONTEXT }}
+          file: ${{ env.FRONTEND_CONTEXT }}/Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:${{ github.sha }}
-Build-Backend:
-  name: Build & Push Backend
-  runs-on: ubuntu-latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:cache,mode=max
 
-  steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+  build-backend:
+    name: Build & push backend
+    runs-on: ubuntu-latest
+    needs: setup-buildx
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Java 21
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
+      - name: Show backend folder contents (debug)
+        run: |
+          echo "Listing backend folder:"
+          ls -la ${{ env.BACKEND_CONTEXT }} || true
 
-    - name: Build backend jar using Maven
-      working-directory: ./job_craft_backend
-      run: mvn -B -DskipTests package
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build backend JAR using Maven
+        working-directory: ${{ env.BACKEND_CONTEXT }}
+        run: mvn -B -DskipTests package
 
-    - name: Build & Push Backend Docker Image
-      uses: docker/build-push-action@v4
-      with:
-        context: ./job_craft_backend
-        file: ./job_craft_backend/Dockerfile
-        push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:${{ github.sha }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.BACKEND_CONTEXT }}
+          file: ${{ env.BACKEND_CONTEXT }}/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/backend-app:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/backend-app:cache,mode=max
