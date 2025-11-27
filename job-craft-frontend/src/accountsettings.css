@@ -1,0 +1,77 @@
+/* accountsettings.css */
+
+/* Page Section */
+.page-section {
+  padding: 2rem 1rem;
+  background-color: #f9fafc;
+  min-height: 100vh;
+}
+
+/* Form Container */
+.account-form {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.account-form h2 {
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+  color: #1e40af;
+}
+
+.account-form p {
+  margin-bottom: 2rem;
+  color: #4b5563;
+}
+
+/* Form Labels */
+.account-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Input Fields */
+.account-form input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.account-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Submit Button */
+.account-form .btn-primary {
+  background-color: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.account-form .btn-primary:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .account-form {
+    padding: 1.5rem;
+  }
+}
