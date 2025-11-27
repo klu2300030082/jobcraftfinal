@@ -16,14 +16,11 @@ jobs:
   setup-buildx:
     name: Setup buildx & qemu
     runs-on: ubuntu-latest
-    outputs:
-      builder: ${{ steps.bld.outputs.name }}
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
-        id: bld
         uses: docker/setup-buildx-action@v2
         with:
           install: true
@@ -62,8 +59,6 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:cache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/frontend-app:cache,mode=max
 
   build-backend:
     name: Build & push backend
@@ -72,11 +67,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Show backend folder contents (debug)
-        run: |
-          echo "Listing backend folder:"
-          ls -la ${{ env.BACKEND_CONTEXT }} || true
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -94,7 +84,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push backend image
+      - name: Build and push backend image
         uses: docker/build-push-action@v4
         with:
           context: ${{ env.BACKEND_CONTEXT }}
@@ -103,5 +93,3 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/backend-app:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/backend-app:cache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/backend-app:cache,mode=max
